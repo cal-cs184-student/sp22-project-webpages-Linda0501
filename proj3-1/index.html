@@ -1,7 +1,385 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Aram Kazorian, Linda Deng  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Aram Kazorian, Linda Deng</h2>
+
+    <div class="padded">
+        <p>In this project we began the process of creating a physically based renderer. With this renderer, we add on the ability to ray trace and path trace
+            incoming light that bounce off of objects and reflect off one another. This is amazing for so many different reasons. We are moving toward a very photo realistic renderer at this point
+            and can recreate almost any scene we need with the algorithms we know. In this project we began with giving the renderer the ability to generate rays, then built on top of that by speeding 
+            up the process of rendering with Bounding Volume Hierarchies. This part (part 2) was definitely the most challenging part for us. We spent about 2 days debugging it, but eventually got it up and working.
+            Our issue was mostly about our manipulation of pointers, but afterwards we felt pretty confident about what we took away from this mistake. Past this, we implemented algorithms to allow
+            light sources to illuminate the rooms in Part 3, first with zero bounce and next with one bounce and importance sampling. Then in part 4 we implemented reflections for rays that bounce off surfaces multiple times, namely global illumination. Task 5, adaptive sampling, 
+            has us speed up the renderer by testing for convergence to see if we can stop tracing the path of the ray. All of this built on top of one another gives us a realistic renderer that begins to model real life. 
+            In the next project, we begin to implement real world textures that make reflections even more challenging and awesome to render, and scenes that some of us may see in day to day life in things such as video games. This project was challenging 
+            but worthwhile as we built something that is used daily by so many different applications.</p>
+
+    <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
+        <p>To implement the ray generation, we first convert the image coordinates (x, y) to its corresponding 
+            coordinates in the camera space through scaling and translation. Specifically, we convert <code>x</code> in 
+            the image space using <code>2 * tan(0.5 * hFovRad) * x - tan(0.5 * hFovRad)</code>, where <code>hFovRad</code> and 
+            <code>vFovRad</code> are <code>hFov</code> and <code>vFov</code> converted in radians. And <code>y</code> is converted 
+            using <code>2 * tan(0.5 * vFovRad) * y - tan(0.5 * vFovRad)</code>. Having figured out the corresponding coordinates of x and y 
+            in the camera space, we now have the origin and direction to create a ray, which is by instantiation ray with <code>pos</code> being 
+            the origin <code>o </code> of the ray while <code>c2w * Vector3D(xcam, ycam, -1).unit()</code> as the direction <code>d</code> of 
+            the ray. The reason why we multiplied the camera space direction vector by c2w is to translate it into world space. And we normalized 
+            the ray direction vector as required. Lastly, we initialized <code>min_t</code> and <code>max_t</code> to <code>nclip</code> and <code>fclip, </code>
+            respectively.</p>
+
+        <p>For ray-triangle intersection, we used the Moller-Trumbore algorithm to compute the intersection of the ray and triangle, if any. Specifically, 
+            we are used the equation <code>1 / (S_1 · E_1) * Vector3D(S_2 · E_2, S_1 · S, S_2 · D)</code> to get the result <code>Vector3D(t, b_1, b_2)</code>, 
+            where <code>E_1 = P_1 - P_0, E_2 = P_2 - P_0, S = O - P_0, S_1 = D × E_2, S_2 = S × E_1, t = time of intersection, b_1, b_2 = barycentric coefficients of triangle 
+            equation where the intersection happened</code>. After computing the values of <code>t, b_1, and b_2</code>, we check to see if the values indicate there is an intersection  or 
+            not. If t &gt;= 0, 0 &lt;= b_1 &lt;= 1, 0 &lt;= b_2 &lt;= 1, and 0 &lt;= 1 - b_1 - b_2 &lt;= 1, then there is a valid intersection between the ray and the triangle. 
+            However, if that condition is not satisfied, the ray doesn't intersect the triangle.
+        </p>
+
+        <p>
+            For ray-sphere intersection, we used the equation from the Lecture 9 slide to help compute the intersection between a given ray and sphere, if any. To summarize, 
+            we substitute the ray equation into the sphere equation such that the manitude of the vector between the point of intersection and center of sphere is <code>R^2</code>. 
+            Throught the equation, we solve for the time(s) of intersection using the quadratic formula <code>t = (-b ± sqrt(b^2 - 4ac))/(2a)</code>, where <code>>a = <i>d</i> · <i>d</i>, b = 
+                2(<i>o</i> - <i>c</i>) · d, and c = (<i>o</i> - <i>c</i>) · (<i>o</i> - <i>c</i>) - R^2</code>. There could be either 0, 1, or 2 intersection between the ray and the sphere. We check 
+                if both t are less than 0, then there is no intersection. If there is only one distinct value of t that is greater than or equal to 0, then there is one intersection. Otherwise, in the 
+                case of two possible values of t, assigns the smaller one to the corresponding field in the intersection struct. In addition to checking against 0, we also check to 
+                make sure that the value of t is within the range of <code>r.min_t</code> and <code>r.max_t</code>. The intersection is only valid if it is within this range. 
+        </p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part1/CBempty.png" width="480px" />
+                    <figcaption align="middle">CBempty.dae in normal shading</figcaption>
+                    <td align="middle">
+                    <img src="images/part1/CBspheres.png" width="480px" />
+                    <figcaption align="middle">CBespheres.dae in normal shading</figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/part1/teapot.png" width="480px" />
+                    <figcaption align="middle">teapot.dae in normal shading</figcaption>
+                    <td align="middle">
+                    <img src="images/part1/cow.png" width="480px" />
+                    <figcaption align="middle">cow.dae in normal shading</figcaption>                    
+                </tr>
+            </table>
+        </div>
+
+     <h2 align="middle">Part 2: Bounding Volume Hierarchy (BVH)</h2>
+        <p>
+            On a high level, our BVH construction algorithms constructs the hierarchy by creating a leaf node if the number of primitives at the node is 
+            less than <code>max_leaf_size</code>. To create the leaf node, we assign NULL to both <code>l</code> and <code>r</code> of the leaf node and assign 
+            <code>start</code> and <code>end</code> to the start and end of the primitives vector. Otherwise, we create an internal node after partitioning the primitives 
+            into two roughly partitions based on their values on the longest partition and assign the left and right children BVH node to be the two partitions, respectively. 
+            We pick the splitting point by first figuring out the longest axis through comparing the x, y, z coordinates of the <code>extent</code> of the bounding box. Then, 
+            given the longest axis, we sort the primitives vector based on their values for the longest axis. With the sorted primitives vector, we can compute the middle primitive, 
+            whose value for the longest axis is less than half of the primitives and great than the other half of the primitives. We can use this middle primitive as the splitting 
+            point to partition the vector of primitives into two for the left and right BVH nodes. This is a good splitting point because it ensure that the split is as even as possible, 
+            preventing the bug of having one side with zero primitives and entering infinite recursion. After partitioning primitives into two groups, we recursively call the 
+            <code>construct_bvh</code> and assign the results to left and right (i.e., <code>node->l = construct_bvh(start, secondStart, max_leaf_size);</code> and <code>node->r = construct_bvh(secondStart, 
+                end, max_leaf_size);</code>).
+        </p>
+
+        <p>
+            The BVH accelerated the rendering time for large <i>.dae</i> files by a lot. Without the BVH acceleration, generating <code>dae/sky/bench.dae</code> took 100.3344s, 
+            <code>dae/sky/blob.dae</code> took 521.6955s, <code>dae/sky/CBlucy.dae</code> took 307.0306s, and <code>dae/sky/maxplanck.dae</code> took 60.6932s. With the BVH 
+            acceleration, generating <code>dae/sky/bench.dae</code> took 0.1644s, <code>dae/sky/blob.dae</code> took 0.8303s, <code>dae/sky/CBlucy.dae</code> took 0.0530s, 
+            and <code>dae/sky/maxplanck.dae</code> took 0.0827s. For better readability, these results are summarized in the table below. We can see that with BVH, the computation 
+            time accelerated by about 600 times.
+        </p>
+        <div align="center">
+            <table>
+                <tr>
+                  <th>Image</th>
+                  <th>Time Without BVH Acceleration</th>
+                  <th>Time With BVH Acceleration</th>
+                </tr>
+                <tr>
+                  <td>dae/sky/bench.dae</td>
+                  <td>100.3344s</td>
+                  <td>0.1644</td>
+                </tr>
+                <tr>
+                  <td>dae/sky/blob.dae</td>
+                  <td>521.6955s</td>
+                  <td>0.8303s</td>
+                </tr>
+                <tr>
+                  <td>dae/sky/CBlucy.dae</td>
+                  <td>307.0306s</td>
+                  <td>0.0530</td>
+                </tr>
+                <tr>
+                  <td>dae/sky/maxplanck.dae</td>
+                  <td>60.6932s</td>
+                  <td>0.0827s</td>
+                </tr>
+              </table>
+        </div>
+        
+        <br>
+        <br>
+        
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part2/maxplanck.png" width="480px" />
+                    <figcaption align="middle">maxplanck.dae in normal shading</figcaption>
+                    <td align="middle">
+                    <img src="images/part2/CBlucy.png" width="480px" />
+                    <figcaption align="middle">CBlucy.dae in normal shading</figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/part2/blob.png" width="480px" />
+                    <figcaption align="middle">blob.dae in normal shading</figcaption>
+                    <td align="middle">
+                    <img src="images/part2/bench.png" width="480px" />
+                    <figcaption align="middle">bench.dae in normal shading</figcaption>
+                </tr>
+            </table>
+        </div>
+
+     <h2 align="middle">Part 3: Direct Illumination</h2>
+
+     <p>For direct lighting with uniform hemisphere, on a high level, for <code>num_samples</code>, we sample a ray direction uniformly in a hemisphere, then create 
+        a ray and find the intersection, and lastly update the Monte Carlo estimater value. Specifically, for every iteration, we call <code>hemisphereSampler->get_sample()</code> 
+        to randomly generate a Vector3D that is the direction of ray in the object space. Then we convert the Vector3D to world space using the <code>o2w</code> transformation 
+        matrix. Then using the direction vector we sampled, we generate a ray using <code>Ray ray = Ray(hit_p + 0.001 * sampled_ray_world, sampled_ray_world);</code>, where the 
+        origin is <code>hit_p + 0.001 * sampled_ray_world</code> and direction is <code>sampled_ray_world</code>. With the generated ray, we call the <code>intersection</code> method 
+        by <code>bool hit = bvh->intersect(ray, &isect_light);</code> to find out the intersection with light, if any. If we see there is an intersection, then we add it to the Monte 
+        Carlo estimator using the object space vectors. Lastly, the method <code>one_bounce_radiance</code> will call this method to compute the Monte Carlo estmate value.
+    </p>
+
+    <p>
+        For direct lighting with importance sampling, we iterate over every single light vector and check if it is a point light source or not. If it is point light source, we only 
+        sample once using <code>sample_L</code> and generate the corresponding ray using <code>hit_p</code> as the origin and the randomly sampled direction between <code>p</code> and 
+        the light source as the direction. And we set <code>min_t</code> and <code>max_t</code> to be <code>0.001</code> and <code>distToLight</code>. Then we call <code>intersect</code> to see if this ray has an intersection. If there is not intersection, we compute the corresponding value 
+        in the reflection equation. On the other hand, if this light source is not a point light source, we sample <code>ns_area_light</code> number of times. And for each iteration of sampling, we use the 
+        sample procedure just like the one for delta light source. At the end of the iteration, we average it by <code>ns_area_light</code> before accumulating it to the result.
+    </p>
+
+    <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part3/bunny_uniform.png" width="480px" />
+                <figcaption align="middle">Direct lighting with uniform hemisphere sampling</figcaption>
+            </tr>
+            <tr>
+                <td align="middle">
+                <img src="images/part3/bunny_importance.png" width="480px" />
+                <figcaption align="middle">Direct lighting with importance sampling</figcaption>
+            </tr>
+        </table>
+    </div>
+
+    <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part3/bunny1.png" width="480px" />
+                <figcaption align="middle">Importance sampling with 1 light ray and 1 sample per pixel</figcaption>
+                <td align="middle">
+                <img src="images/part3/bunny4.png" width="480px" />
+                <figcaption align="middle">Importance sampling with 4 light ray and 1 sample per pixel</figcaption>
+            </tr>
+            <tr>
+                <td align="middle">
+                <img src="images/part3/bunny16.png" width="480px" />
+                <figcaption align="middle">Importance sampling with 16 light ray and 1 sample per pixel</figcaption>
+                <td align="middle">
+                <img src="images/part3/bunny64.png" width="480px" />
+                <figcaption align="middle">Importance sampling with 64 light ray and 1 sample per pixel</figcaption>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        For direct lighting with uniform sampling, we randonly sample in a unit hemisphere with equal probability. This type of sampling results in quite noisy 
+        images, but it does converge to the correct result as we increase the number of times we sample. On the other hand, the importance sampling method does similart thing 
+        but converges faster because it sample all the lights directly instead of uniformly in a hemisphere. This conclusion can be proven by our images about illustrating 
+        the difference between uniform sampling and lighting sampling. We can see that the one with uniform sampling one is more noisy than the lighting sampling one when 
+        we keep all the parameters to be the same.
+    </p>
+
+
+     <h2 align="middle">Part 4: Global Illumination</h2>
+    
+    
+     <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part4/blob.png" width="480px" />
+                <figcaption align="middle">bunny with 0 max ray depth</figcaption>
+                <td align="middle">
+                <img src="images/part4/dragon.png" width="480px" />
+                <figcaption align="middle">bunny with 1 max ray depth</figcaption>   
+            </tr>
+        </table>
+    </div>
+
+
+    <p>
+        Bullet 3: For this section, we rendered the sphere image once with direct illumination and once with indirect illumination. For direct illumination, 
+        this means only zero bounce illumination and one bounce illumination. This direct illumination image produces an image with the light on the ceiling lit, as 
+        this is zero bounce illumination. The one bounce illumination is what lights up the rest of the room with the strength of the light given off by the zero bounce illumination. 
+        Doing one bounce once, however, only produces the light that lights up the room, and the shadows produced by those rays. Because there are no bounces off of other objects being calculated, 
+        we are left with the dark shadows under the spheres and the ceiling. The ceiling is not lit because we need light to reflect off other object to strike the direction of the ceiling (where the light is) as well.
+        So, we are left with a lit room, with dark shadows under the spheres and on the ceiling as well. With indirect illumination only, we get rid of one bounce and 
+    </p>
+
+    <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part4/task4.3_direct.png" width="480px" />
+                <figcaption align="middle">bunny with 0 max ray depth</figcaption>
+                <td align="middle">
+                <img src="images/part4/task4.3_indirect.png" width="480px" />
+                <figcaption align="middle">bunny with 1 max ray depth</figcaption>   
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        Bullet 4: The images rendered for this part only differ in the max_ray_depth, which displays a main difference, with one outlier being m = 0.
+        In the case of max_ray_depth being 0, this is zero bounce illumination, and so all we have is the light at the top being turned on, but there is no bouncing so the rest is just black.
+        In the case of max_ray_depth being 1, we have zero bounce and one bounce illumination together, so we get reflections of the first surfaces that the light hits (the walls and the bunny), but since there are no second 
+        bounces, the ceiling is not hit and shows up as black. At max_ray_depth being 2, we have two bounces, and so the ceiling is now lit up with the bounces, and the corners that used to have some dark shadows get slightly brighter.
+        Past this, the difference is that 
+        the shadows in the corners of the rooms or where the walls meet get brighter and brighter everytime we increase the max_ray depth, since we have more bounces and reflections to compute and illuminate. Intuitively, 
+        this is because we trace the paths of light for longer, so light keeps bouncing and reflecting off the surfaces, and we record these reflections and the illumination it gives off
+        so our scene gets brighter. The interesting thing is that this trend can be seen with max_ray_depth 2-3, but, seems like there are some diminishing returns, since 100 does not seem too different to say it is worth rendering for that much longer.
+    </p>
+    <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part4/task4.4_m0.png" width="480px" />
+                <figcaption align="middle">bunny with 0 max ray depth</figcaption>
+                <td align="middle">
+                <img src="images/part4/task4.4_m1.png" width="480px" />
+                <figcaption align="middle">bunny with 1 max ray depth</figcaption>   
+            </tr>
+            <tr>
+                <td align="middle">
+                    <img src="images/part4/part4_bunny_2_ray_depth.png" width="480px" />
+                    <figcaption align="middle">bunny with 2 max ray depth</figcaption>
+                    <td align="middle">
+                    <img src="images/part4/part4_bunny_3_ray_depth.png" width="480px" />
+                    <figcaption align="middle">bunny with 3 max ray depth</figcaption>
+            </tr>
+            <tr>
+                <td align="middle">
+                    <img src="images/part4/part4_bunny_100_ray_depth.png" width="480px" />
+                    <figcaption align="middle">bunny with 100 max ray depth</figcaption>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        Bullet 5: The images rendered here of the spheres show global illumination at different levels of sampling. 
+        In particular, we have images with 1 sample, 2 samples, 4, 8, 16, 32, 64, and 1024 samples, all using 4 light rays.
+        These images have some key differences, however not much in the lighting themselves, apart from the one sample picture. In the 
+        one sample outlier, we see both a very grainy, noisy image, that has no color (black and white). This is because we have only one sample
+        so we cannot gather all the data needed to render correctly. Past this, we get some color in the 2 samples image, although it is still a bit washed out and noisy.
+        In general, the more we increase the samples, the smoother the image gets. To see this, note how the 4 sample image compares with 64. Between these increases, the image
+        gets noticeably smoother and less noisy because we can take in more samples per pixel. The biggest difference comes with 64 compared to 1024.
+        Here, the image gets extremely smooth in the case of 1024 samples per pixel. There is very little noise, and the bouncing reflections are very clear.
+        For example, we see the purple bouncing off the right sphere and the red bouncing off the left, as well as the shadows having a bit of purple and red glare as well.
+        The 1024 samples per pixel image shows all of these qualities the best with little to no noise, while the 64 samples image has a bit of noise (but still much less than the others). Overall, 
+        the images get much less noisy as we increase the samples per pixel and the colors of the image are much more clear and vibrant as well. 
+    </p>
+
+    
+     <div align="center">
+        <table style="width=100%">
+            <tr>
+                <td align="middle">
+                <img src="images/part4/task4.5_1.png" width="480px" />
+                <figcaption align="middle">Sphere with 1 sample</figcaption>
+                <td align="middle">
+                <img src="images/part4/task4.5_2.png" width="480px" />
+                <figcaption align="middle">Sphere with 2 samples</figcaption>
+                
+            </tr>
+            <tr>
+                <td align="middle">
+                <img src="images/part4/task4.5_4.png" width="480px" />
+                <figcaption align="middle">Sphere with 4 samples</figcaption>
+                <td align="middle">
+                <img src="images/part4/task4.5_8.png" width="480px" />
+                <figcaption align="middle">Sphere with 8 samples</figcaption>
+            </tr>
+            <tr>
+                <td align="middle">
+                <img src="images/part4/task4.5_16.png" width="480px" />
+                <figcaption align="middle">Sphere with 16 samples</figcaption>
+                <td align="middle">
+                <img src="images/part4/task4.5_32.png" width="480px" />
+                <figcaption align="middle">Sphere with 32 samples</figcaption>
+            </tr>
+            <tr>
+                <td align="middle">
+                    <img src="images/part4/task4.5_64(3).png" width="480px" />
+                    <figcaption align="middle">Sphere with 64 samples</figcaption>
+                    <td align="middle">
+                    <img src="images/part4/task4.5_1024.png" width="480px" />
+                    <figcaption align="middle">Sphere with 1024 samples</figcaption>
+            </tr>
+        </table>
+    </div>
+     
+
+     <h2 align="middle">Part 5: Adaptive Sampling</h2>
+
+
+    <p> Implementation: For the implementation, we really just updated raytrace_pixel. The edits we made are first instantiating s1 and s2, and a count for the samples we have taken.
+        In the for loop, we added a check to see if the current number of samples (count) is != 0 (to avoid exiting on the first run), and if count % samplesperBatch == 0. If it was, we check if it has 
+        converged. We do this in one if statement with all the math together to avoid any possible precision issues since we saw too many at this point. We just fulfilled the formula by calculating 1.96 * sd (calculated inside the if) / sqrt(n) <= maxTolerance * average.
+        If this was true, we have converged and can stop sampling. We fill the rate array with the samples we actually took (count) and the division factor for the estimate, everything that was num_samples becomes count. The only explanation needed is why we added 1 
+        to count when it was used and not subtracting where it said in the formula. This is because count is one sample behind the real count of samples we have taken so far. So everywhere that count should be used, we used count + 1.
+        Past this, we divided by count and filled the sample buffer and count as usual.</p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/part4/bunny_rate.png" width="480px" />
+                    <figcaption align="middle">Sphere with 1 sample</figcaption>
+                    <td align="middle">
+                    <img src="images/part4/bunny_real.png" width="480px" />
+                    <figcaption align="middle">Sphere with 2 samples</figcaption>
+                    
+                </tr>
+                
+            </table>
+        </div>
+
+
+<p>Website: https://cal-cs184-student.github.io/sp22-project-webpages-Linda0501/proj3/index.html</p>
+</div>
+</body>
 </html>
+
+
+
+
