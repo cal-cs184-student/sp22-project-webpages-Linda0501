@@ -1,7 +1,169 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Aram Kazorian, Linda Deng  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Aram Kazorian, Linda Deng</h2>
+
+    <div class="padded">
+        <p> 
+            In this project, we added additional features to ray tracer from project 3-1. Specifically, microfacet materials 
+            and depth of field effects in our case. The microfacet materials introduced brought in possibilities of real world 
+            metals and materials such as silver, copper, gold, nickel and more being used in our images. The depth of field 
+            effects that made use of introduced real world effects that are used everywhere from competitive video games to 
+            photography. We allowed the renderer to focus on the microfacet material used in the image and blur out the rest 
+            of the image. These effects complete the ray tracer and complete almost everything we would need to render everyday 
+            life in a still image. In the next project we program the final step needed: physics based rendering for cloths and 
+            the animation of those materials.
+        </p>
+
+    <h2 align="middle">Part 2: Microfacet Material</h2>
+        
+        <h3>Part 2.1</h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/2-1-0005.png" width="480px" />
+                    <figcaption align="middle">Copper dragon (alpha = 0.005) </figcaption>
+                    <td align="middle">
+                    <img src="images/2-1-005.png" width="480px" />
+                    <figcaption align="middle">Copper dragon (alpha = 0.05) </figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/2-1-025.png" width="480px" />
+                    <figcaption align="middle">Copper dragon (alpha = 0.25)  </figcaption>
+                    <td align="middle">
+                    <img src="images/2-1-05.png" width="480px" />
+                    <figcaption align="middle">Copper dragon (alpha = 0.5) </figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p>
+            Starting from a very low alpha value, the lowest in the range, 0.005, we see the material of the dragon is extremely
+             glossy, and seems darker because of this. The reflections of the purple color along the dragon seem dark, as well 
+             as the dragon as a whole. As we move up, the reflections look less dark and less glossy. As soon as we hit 
+             alpha = 0.25, the dragon looks significantly more matte as a solid color and less glossy, with less reflections 
+             from the purple and red walls surrounding it. At alpha = 0.5, the dragon is extremely solid and matte, with some 
+             slight reflections of red and purple, but overall is a solid gold piece. All in all, as alpha increases, the 
+             material gets less glossy and more matte.
+        </p>
+
+        <h3>Part 2.2</h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/2-2hemisphere.png" width="480px" />
+                    <figcaption align="middle">Bunny using cosine hemisphere sampling (64 samples per pixel & 1 sample per light & 7 bounces) </figcaption>
+                    <td align="middle">
+                    <img src="images/2-2importance.png" width="480px" />
+                    <figcaption align="middle">Bunny using importance sampling (64 samples per pixel & 1 sample per light & 7 bounces)</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p>From images above, we can clearly see that the bunny generated using importance sampling is way less noisy than the one 
+            generated using cosine hemisphere sampling. Hemisphere sampling results in an image that is grainy, noisy, and it doesn't 
+            show the microfacet material well. On the other hand, the image generated using hemisphere sampling is very sharp and clear 
+            and renders the copper material well. The reason behind the differences is that cosine hemisphere sampling is not suitable for 
+            Beckmann distribution. 
+        </p>
+
+        <h3>Part 2.3</h3>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/2-3silver.png" width="480px" />
+                    <figcaption align="middle">Silve bunny</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p>The material we chose to use is silver. The eta parameter is (0.059193 0.059881 0.047366) and the k parameter is 
+            (4.1283 3.5892 2.8132).
+        </p>
+
+    <h2>Part 4: Depth of Field</h2>
+        <p>One major difference between a pinhole camera model and a thin-lens camera model is that the pinhole camera model 
+            produces very sharp images while the thin-lens camera model result in images with blurry parts depending on the focal 
+            distance. For a pinhole camera model, it produces sharp images because for an incoming light ray, it will hits the image 
+            plan at one exact spot. There is a direct one-to-one correspondance between the where the ray comes from and where it 
+            intersects the image plane. For a thin-lens model, the light ray gets dispersed in multiple direction when it hits the lens, 
+            which blurs out the resulting image. Since multiple rays can hit the same point on the image plane due to the lens, the image 
+            produced is not that sharp. 
+        </p>
+
+        <h3>"Focus stack"</h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-focal435.png" width="480px" />
+                    <figcaption align="middle">Dragon with focal distance 4.35 & aperture 1.23</figcaption>
+                    <td align="middle">
+                    <img src="images/3-focal456.png" width="480px" />
+                    <figcaption align="middle">Dragon with focal distance 4.56 & aperture 1.23 </figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-focal485.png" width="480px" />
+                    <figcaption align="middle">Dragon with focal distance 4.85 & aperture 1.23  </figcaption>
+                    <td align="middle">
+                    <img src="images/3-focal5.png" width="480px" />
+                    <figcaption align="middle">Dragon with focal distance 5 & aperture 1.23 </figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+        <h3>Varying aperature sizes</h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-1ap02.png" width="480px" />
+                    <figcaption align="middle">Dragon with aperture 0.2 </figcaption>
+                    <td align="middle">
+                    <img src="images/3-1ap1.png" width="480px" />
+                    <figcaption align="middle">Dragon with aperture 1 </figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-1ap2.png" width="480px" />
+                    <figcaption align="middle">Dragon with aperture 2  </figcaption>
+                    <td align="middle">
+                    <img src="images/3-1ap3.png" width="480px" />
+                    <figcaption align="middle">CDragon with aperture 3 </figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+     <p>Website link: https://cal-cs184-student.github.io/sp22-project-webpages-Linda0501/proj3-2/index.html</p>
+
+</div>
+
+</body>
 </html>
+
+
+
+
