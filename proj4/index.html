@@ -1,7 +1,433 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 4 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Mesh Editor</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2017</h1>
+<h1 align="middle">Project 4: Cloth Simulator</h1>
+<h2 align="middle">Aram Kazorian, Linda Deng CS184</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>
+  In this final project (other than actual final, of course) we built a real-time simulation of cloth using a mass and spring 
+  based system. We defined and applied physical constraints on the cloth as well as concepts like velvet integration to 
+  simulate the way cloth moves over time. We finished by implemented self-collisions as well as shaders, which provide a 
+  realistic application of what we built by shading the cloth with different lighting schemes. This was the final step in 
+  the course to learn real world applications of graphics. We went from building a rasterizer, to a mesh generator, to a 
+  ray-tracer, and finally this simulator which used real physics to render materials in real-time.
+</p>
+
+<h2 align="middle">Part I: Masses and springs</h2>
+<p>
+  The following are screenshots of `scene/pinned2.json` showing structures of point masses and springs of the cloth frame at a view 
+  angle.
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part1-pinned2.png" width="1000px" />
+            <figcaption align="middle">Cloth frame of `scene/pinned2.json`</figcaption>
+        </tr>
+        <tr>
+            <td align="middle">
+            <img src="img/part1-pinned2-1.png" width="1000px" />
+            <figcaption align="middle">Cloth frame of `scene/pinned2.json`</figcaption>
+        </tr>
+    </table>
+  </div>
+
+  <br>
+  <br>
+
+  The following are screenshots of wireframe with different contraints enabled. 
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part1-noshearing.png" width="1000px" />
+            <figcaption align="middle">Cloth frame of `scene/pinned2.json` of without shearing constraints.</figcaption>
+        </tr>
+        <tr>
+            <td align="middle">
+            <img src="img/part1-onlyshearing.png" width="1000px" />
+            <figcaption align="middle">Cloth frame of `scene/pinned2.json`only with shearing constraints.</figcaption>
+        </tr>
+        <tr>
+          <td align="middle">
+          <img src="img/part1-pinned2.png" width="1000px" />
+          <figcaption align="middle">Cloth frame of `scene/pinned2.json` with all constraints.</figcaption>
+      </tr>
+    </table>
+  </div>
+</p>
+
+<h2 align="middle">Part II: Masses and springs</h2>
+<p>
+  <h4>Effects of `ks`</h4>
+  <p>For low values of `ks`, we can see that the cloth keep vibrating and has multiple folds at the top. In contrast, when 
+    `ks` values are high, the cloth doesn't vibrate and only has one smooth fold at the top. The difference in behavior caused 
+    by changing `ks` is due to the fact that low `ks` means the spring is easy to stretch while high `ks` means the spring is 
+    hard to stretch. Since the default parameter is `ks = 5000 N/M` which is in between the extreme values we tested and closer to 
+    the case with high `ks` shown below, the simulation of doesn't vibrate that much after simulation and has one major fold at the top. 
+    But we can also see some small folds stemming fromt the corners.
+  </p>
+
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part2-lowks.png" width="600px" />
+            <figcaption align="middle">Low `ks`</figcaption>
+            <td align="middle">
+            <img src="img/part2-highks.png" width="600px" />
+            <figcaption align="middle">High `ks`</figcaption>
+        </tr>
+        <tr>
+          <img src="img/part2-default.png" width="600px" />
+          <figcaption align="middle">Default `ks`</figcaption>
+        </tr>
+    </table>
+  </div>
+
+  <h4>Effects of `density`</h4>
+  <p>
+    For low values of `density`, we can see that the cloth doesn't really vibrate after reaching the rest state and only has 
+    one fold at the top. In contrast, for high values of `density`, we can see that the cloth keeps vibrating and has multiple 
+    moving folds at the top. For the default one, the density is 15 g/cm^2. The cloth didn't vibrate much after reaching the rest 
+    state and has a looser fold than the high density one. The differences are illustrated visually in the following images.
+  </p>
+
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part2-lowdensity.png" width="600px" />
+            <figcaption align="middle">Low `density`</figcaption>
+            <td align="middle">
+            <img src="img/part2-highdensity.png" width="600px" />
+            <figcaption align="middle">High `density`</figcaption>
+        </tr>
+        <tr>
+          <img src="img/part2-default.png" width="600px" />
+          <figcaption align="middle">Default `density`</figcaption>
+        </tr>
+    </table>
+  </div>
+
+  <h4>Effects of `damping`</h4>
+  <p>
+    For low values of `damping`, we can see that the cloth is really loose and keeps flopping around for a while before settling 
+    down in its rest state. This is because low values of `damping` means there is less degree of oscillation. In contrast, for 
+    high values of `damping`, the cloth falls down slowly into its rest state. For the default `damping` value 0.2, since the 
+    value isn't too extreme, the cloth falls down in a fairly steady rate that is not too slow and settles in the rest state. 
+    This is due to its larger decrease in oscillation. From the two screenshots of the motion below, we can see the visual differences.
+  </p>
+  
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part2-lowdamping.png" width="600px" />
+            <figcaption align="middle">Low `damping`</figcaption>
+            <td align="middle">
+            <img src="img/part2-highdamping.png" width="600px" />
+            <figcaption align="middle">High `damping`</figcaption>
+        </tr>
+        <tr>
+          <img src="img/part2-default.png" width="600px" />
+          <figcaption align="middle">Default `damping`</figcaption>
+        </tr>
+    </table>
+  </div>
+
+  <p>The following is a screenshot of the final resting state of `scene/pinned4.json` using the default parameters.</p>
+
+  <div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="img/part2-default.png" width="600px" />
+            <figcaption align="middle">`scene/pinned4.json` with default parameters.</figcaption>
+        </tr>
+    </table>
+  </div>
+
+</p>
+
+<h2 align="middle">Part III: Handling collisions with other objects</h2>
+<p>
+  We can see that the higher the `ks` value, which is the spring constant, the wider or less loose the cloth is at its rest 
+  state after falling. When the `ks` value is smaller, the cloth is looser on the sphere. This makes sense becuase the higher 
+  the `ks` value, the harder to stretch the spring, which results in the cloth being less loose. This scenario can be seen from 
+  the three screenshots below.
+</p>
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part3-500.png" width="600px" />
+          <figcaption align="middle">ks = 500</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part3-5000.png" width="600px" />
+        <figcaption align="middle">ks = 5000</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part3-50000.png" width="600px" />
+        <figcaption align="middle">ks = 50000</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part IV: Handling self-collisions</h2>
+
+<p>Screenshots of 3 stages of the cloth falling.</p>
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part4-early.png" width="600px" />
+          <figcaption align="middle">Early self-collision</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-initial.png" width="600px" />
+        <figcaption align="middle">Initial self-collision</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-end.png" width="600px" />
+        <figcaption align="middle">Ending self-collision</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h3>Effects of density</h3>
+
+<p>
+  We can see that for low density, the cloth collide very smoothly with less bumps and only end up in a few smooth folds. And 
+  we can see that the cloth landed very smoothly and flatly. In contrast, for high density, the cloth is more crumbled up and 
+  bumpy when colliding. And when the cloth land, it didn't land flatly. But instead it has a bumpy surface that is vibrating. 
+  The visual differences can be seen through the screenshots below.
+</p>
+
+<p>Screenshots of cloth falling with low density:</p>
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part4-lowdensity-early.png" width="600px" />
+          <figcaption align="middle">Early self-collision with low density</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+          <img src="img/part4-lowdensity-initial.png" width="600px" />
+          <figcaption align="middle">Initial self-collision with low density</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-lowdensity-ending.png" width="600px" />
+        <figcaption align="middle">Self-collision of low density cloth ending at rest state</figcaption>
+      </tr>
+  </table>
+</div>
+
+<p>Screenshots of cloth falling with high density:</p>
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part4-highdensity-early.png" width="600px" />
+          <figcaption align="middle">Early self-collision with high density</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+          <img src="img/part4-highdensity-initial.png" width="600px" />
+          <figcaption align="middle">Initial self-collision with high density</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-highdensity-ending.png" width="600px" />
+        <figcaption align="middle">Self-collision of high density cloth ending at rest state</figcaption>
+      </tr>
+  </table>
+</div>
+
+
+<h3>Effects of ks</h3>
+
+<p>
+  For low values of ks, we can see that the cloth was more crumbled up when colliding and didn't land flatly on the plane. In 
+  contrast, for high values of ks, the cloth fell more smoothly and had less folds. It landed relatively more flatly on the plane 
+  than the one with low values of ks. This makes sense because high values of ks means that it is more difficult to stretch the spring, 
+  thus the cloth ends up less bumpy and more smooth. We can see the difference in the following screenshots.
+</p>
+
+<p>Screenshots of cloth falling with low ks:</p>
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part4-lowks-early.png" width="600px" />
+          <figcaption align="middle">Early self-collision with low ks</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+          <img src="img/part4-lowks-initial.png" width="600px" />
+          <figcaption align="middle">Initial self-collision with low ks</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-lowks-ending.png" width="600px" />
+        <figcaption align="middle">Self-collision of low ks cloth ending at rest state</figcaption>
+      </tr>
+  </table>
+</div>
+
+<p>Screenshots of cloth falling with high ks:</p>
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/part4-highks-early.png" width="600px" />
+          <figcaption align="middle">Early self-collision with high ks</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+          <img src="img/part4-highks-initial.png" width="600px" />
+          <figcaption align="middle">Initial self-collision with high ks</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/part4-highks-ending.png" width="600px" />
+        <figcaption align="middle">Self-collision of high ks cloth ending at rest state</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part V: Shaders</h2>
+
+<p>Shaders, as said in the spec, are isolated programs (meaning they do not interact with one another), that run in parallel on GPU that can execute 
+  sections of the graphics pipeline, which takes in an input and outputs a 4 dimensional vector. They essentially tell the computer how to render 
+  each pixel in terms of lighting and shading, though they can do other effects as well. Written in a C-like language (GLSL), shaders can have functions and 
+  are tailored to mathematical operations with vectors and matrices that graphics may need. They take in inputs, with some being uniform (shared across the program).
+  We have two different types of shaders. A vertex shader, which usually apply transformations to geometry by transforming vertices, their positions, and normals, and write the 
+  final position of the vertex to <code>gl_Position</code>. The second type is a fragment shader. After rasterization, these shaders process the fragments. This fragment shader
+  works together with the vertex shader by taking in the geometric attributes of the fragment calculated by the vertex shader (recall that the vertex shader does output the final position)
+  to compute and write a color to <code>out_color</code>. These two types work together with the vertex shader essentially being the first processor and creating the inputs for the fragment 
+  shader to compute the final color, which is what creates the lighting effects we see.
+</p>
+
+<h3>Blinn-Phong:</h3>
+<p>
+The Blinn-Phong shading model states that the intensity depends on view direction, per lecture and is bright near the mirror reflection direction. We are essentially adding up together ambient, specular, and diffuse lighting all together. Light intensity and position are passed in as uniforms. From lecture again, we compute the h vector from the formula by finding the bisector between (v, l). This gives us a shading model that is the standard in OpenGL and used very often in the real world since it accurately depicts the lighting of the real world. Also from lecture, note that in this shading model we essentially shade each pixel as opposed to the vertex or triangle. We interpolate normal vectors across each triangle and compute the full shading model at each pixel.
+</p>
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/phong_ambient.png" width="600px" />
+          <figcaption align="middle">Only the ambient component</figcaption>
+          <td align="middle">
+          <img src="img/phong_diffuse.png" width="600px" />
+          <figcaption align="middle">Only the diffuse component</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/phong_specular.png" width="600px" />
+        <figcaption align="middle">Only the specular component</figcaption>
+        <td align="middle">
+        <img src="img/phong_all.png" width="600px" />
+        <figcaption align="middle">The entire Blinn-Phong model</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h3>Texture mapping shader:</h3>
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/mytexture1.png" width="600px" />
+          <figcaption align="middle">Custom texture mapping shader</figcaption>
+          <td align="middle">
+          <img src="img/mytexture2.png" width="600px" />
+          <figcaption align="middle">Custom texture mapping shader</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h3>Bump & Displacement:</h3>
+<p>
+  First, we can analyze the difference between bump and displacement since the differences are more apparent than the resolution change. Both bump and displacement show textures on the cloth, however, in the case of bump, that is all that happens with the cloth. It displays a texture with bumps to showcase it that either becomes more prevalent or less depending on how you change the height and normal values. The displacement version is different. Not only does it display the texture and bumps, but the vertices look visibly displaced. It looks rugged and rough.  In other words, the geometry of the cloth and sphere itself looks displaced. There are rough corners instead of the smooth sphere and cloth that we were accustomed to seeing before this task. Moving on, we change the resolution of the sphere to 128x128. This doesn’t change too much at first glance, however, looking closer the difference is noticeable. While displacement still does displace the vertices and causes rugged bumps, the actual bumps themselves are less noticeable because there are more vertices themselves. So, the end result is both bump and displacement methods looking more smooth, but displacement still creating rugged edges around the surfaces of the cloth and sphere.
+</p>
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/bump_16.png" width="600px" />
+          <figcaption align="middle">Bump mapping -o 16 -a 16</figcaption>
+          <td align="middle">
+          <img src="img/displacement_16.png" width="600px" />
+          <figcaption align="middle">Displacement mapping -o 16 -a 16</figcaption>
+      </tr>
+      <tr>
+        <td align="middle">
+        <img src="img/bump_128.png" width="600px" />
+        <figcaption align="middle">Bump mapping -o 128 -a 128</figcaption>
+        <td align="middle">
+        <img src="img/displacement_128.png" width="600px" />
+        <figcaption align="middle">Displacement mapping -o 128 -a 128</figcaption>
+      </tr>
+  </table>
+</div>
+
+<h3>Mirror shader:</h3>
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="img/mirror_cloth.png" width="600px" />
+          <figcaption align="middle">Mirror shader on the cloth</figcaption>
+          <td align="middle">
+          <img src="img/mirror_sphere.png" width="600px" />
+          <figcaption align="middle">Mirror shader on the sphere</figcaption>
+      </tr>
+  </table>
+</div>
+
+<p>website link: https://cal-cs184-student.github.io/sp22-project-webpages-Linda0501/proj4/index.html</p>
+
+</body>
 </html>
